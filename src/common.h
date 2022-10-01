@@ -5,14 +5,16 @@
 #pragma once
 
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
 /**
  * @brief cell position, index starts from zero
- * 
+ *
  */
-struct Position {
+struct Position
+{
     int row = 0;
     int col = 0;
 
@@ -21,19 +23,19 @@ struct Position {
 
     /**
      * @brief checks if position has valid index
-     * 
+     *
      */
     bool IsValid() const;
 
     /**
      * @brief converts Position to string, opposite of FromString(std::string_view str)
-     * 
+     *
      */
     std::string ToString() const;
 
     /**
      * @brief converts text into Position
-     * 
+     *
      * (0,0) -> A1, (0,1) -> B1, (1,1) -> A2, etc
      * index: 0 1 2 3 4 ...
      * nums:  1 2 3 4 5 ...
@@ -42,13 +44,30 @@ struct Position {
      * 800 = 1 * 26^2 + 4 * 26^1 + 20 * 26^0            numerical
      * 800 = (1-1) * 26^2 + (4-1) * 26^1 + 20 * 26^0    index
      * 800 = ADU                                        column
-     * 
+     *
      * @param str std:string in format like "A1", "ADU123", etc
-     * @return Position 
+     * @return Position
      */
     static Position FromString(std::string_view str);
 
     static const int MAX_ROWS = 16384;
     static const int MAX_COLS = 16384;
     static const Position NONE;
+};
+
+// Описывает ошибки, которые могут возникнуть при вычислении формулы.
+class FormulaError : public std::runtime_error
+{
+  public:
+    using std::runtime_error::runtime_error;
+};
+
+std::ostream &operator<<(std::ostream &output, FormulaError fe);
+
+// Исключение, выбрасываемое при попытке задать синтаксически некорректную
+// формулу
+class FormulaException : public std::runtime_error
+{
+  public:
+    using std::runtime_error::runtime_error;
 };

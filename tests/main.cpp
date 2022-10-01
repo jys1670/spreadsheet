@@ -1,3 +1,4 @@
+#include "../src/FormulaAST.h"
 #include "../src/common.h"
 #include "test_runner_p.h"
 
@@ -5,22 +6,27 @@
 #include <string>
 #include <string_view>
 
-inline std::ostream& operator<<(std::ostream& output, Position pos) {
+inline std::ostream &operator<<(std::ostream &output, Position pos)
+{
     return output << "(" << pos.row << ", " << pos.col << ")";
 }
 
-inline Position operator"" _pos(const char* str, std::size_t) {
+inline Position operator"" _pos(const char *str, std::size_t)
+{
     return Position::FromString(str);
 }
 
-namespace {
-void TestPositionAndStringConversion() {
+namespace
+{
+void TestPositionAndStringConversion()
+{
     auto test_single = [](Position pos, std::string_view str) {
         ASSERT_EQUAL(pos.ToString(), str);
         ASSERT_EQUAL(Position::FromString(str), pos);
     };
 
-    for (int i = 0; i < 25; ++i) {
+    for (int i = 0; i < 25; ++i)
+    {
         test_single(Position{i, i}, char('A' + i) + std::to_string(i + 1));
     }
 
@@ -40,13 +46,15 @@ void TestPositionAndStringConversion() {
     test_single(Position{Position::MAX_ROWS - 1, Position::MAX_COLS - 1}, "XFD16384");
 }
 
-void TestPositionToStringInvalid() {
+void TestPositionToStringInvalid()
+{
     ASSERT_EQUAL((Position::NONE).ToString(), "");
     ASSERT_EQUAL((Position{-10, 0}).ToString(), "");
     ASSERT_EQUAL((Position{1, -3}).ToString(), "");
 }
 
-void TestStringToPositionInvalid() {
+void TestStringToPositionInvalid()
+{
     ASSERT(!Position::FromString("").IsValid());
     ASSERT(!Position::FromString("A").IsValid());
     ASSERT(!Position::FromString("1").IsValid());
@@ -61,11 +69,36 @@ void TestStringToPositionInvalid() {
     ASSERT(!Position::FromString("A1234567890123456789").IsValid());
     ASSERT(!Position::FromString("ABCDEFGHIJKLMNOPQRS8").IsValid());
 }
-}  // namespace
-int main() {
+} // namespace
+
+namespace
+{
+double ExecuteASTFormula(const std::string &expression)
+{
+    return ParseFormulaAST(expression).Execute();
+}
+} // namespace
+
+int main()
+{
     TestRunner tr;
     RUN_TEST(tr, TestPositionAndStringConversion);
     RUN_TEST(tr, TestPositionToStringInvalid);
     RUN_TEST(tr, TestStringToPositionInvalid);
+
+    ASSERT_EQUAL(ExecuteASTFormula("1"), 1.0);
+    ASSERT_EQUAL(ExecuteASTFormula("1+2*3-4/5"), 6.2);
+    try
+    {
+        ExecuteASTFormula("1/0");
+    }
+    catch (const FormulaError &fe)
+    {
+        std::cout << fe.what() << std::endl;
+    }
+
+    std::cout << "Tests Passed" << std::endl;
+    return 0;
+
     return 0;
 }
