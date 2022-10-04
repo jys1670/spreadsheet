@@ -17,6 +17,17 @@ inline Position operator"" _pos(const char *str, std::size_t)
     return Position::FromString(str);
 }
 
+inline std::ostream &operator<<(std::ostream &output, Size size)
+{
+    return output << "(" << size.rows << ", " << size.cols << ")";
+}
+
+inline std::ostream &operator<<(std::ostream &output, const CellInterface::Value &value)
+{
+    std::visit([&](const auto &x) { output << x; }, value);
+    return output;
+}
+
 namespace
 {
 void TestPositionAndStringConversion()
@@ -70,6 +81,98 @@ void TestStringToPositionInvalid()
     ASSERT(!Position::FromString("A1234567890123456789").IsValid());
     ASSERT(!Position::FromString("ABCDEFGHIJKLMNOPQRS8").IsValid());
 }
+
+void TestEmpty()
+{
+    auto sheet = CreateSheet();
+    ASSERT_EQUAL(sheet->GetPrintableSize(), (Size{0, 0}));
+}
+
+void TestInvalidPosition()
+{
+    auto sheet = CreateSheet();
+    try
+    {
+        sheet->SetCell(Position{-1, 0}, "");
+    }
+    catch (const InvalidPositionException &)
+    {
+    }
+    try
+    {
+        sheet->GetCell(Position{0, -2});
+    }
+    catch (const InvalidPositionException &)
+    {
+    }
+    try
+    {
+        sheet->ClearCell(Position{Position::MAX_ROWS, 0});
+    }
+    catch (const InvalidPositionException &)
+    {
+    }
+}
+
+void TestSetCellPlainText()
+{
+    auto sheet = CreateSheet();
+
+    auto checkCell = [&](Position pos, std::string text) {
+        sheet->SetCell(pos, text);
+        CellInterface *cell = sheet->GetCell(pos);
+        ASSERT(cell != nullptr);
+        ASSERT_EQUAL(cell->GetText(), text);
+        ASSERT_EQUAL(std::get<std::string>(cell->GetValue()), text);
+    };
+
+    checkCell("A1"_pos, "Hello");
+    checkCell("A1"_pos, "World");
+    checkCell("B2"_pos, "Purr");
+    checkCell("A3"_pos, "Meow");
+
+    const SheetInterface &constSheet = *sheet;
+    ASSERT_EQUAL(constSheet.GetCell("B2"_pos)->GetText(), "Purr");
+
+    sheet->SetCell("A3"_pos, "'=escaped");
+    CellInterface *cell = sheet->GetCell("A3"_pos);
+    ASSERT_EQUAL(cell->GetText(), "'=escaped");
+    ASSERT_EQUAL(std::get<std::string>(cell->GetValue()), "=escaped");
+}
+
+void TestClearCell()
+{
+    auto sheet = CreateSheet();
+
+    sheet->SetCell("C2"_pos, "Me gusta");
+    sheet->ClearCell("C2"_pos);
+    ASSERT(sheet->GetCell("C2"_pos) == nullptr);
+
+    sheet->ClearCell("A1"_pos);
+    sheet->ClearCell("J10"_pos);
+}
+
+void TestPrint()
+{
+    auto sheet = CreateSheet();
+    sheet->SetCell("A2"_pos, "meow");
+    sheet->SetCell("B2"_pos, "=1+2");
+    sheet->SetCell("A1"_pos, "=1/0");
+
+    ASSERT_EQUAL(sheet->GetPrintableSize(), (Size{2, 2}));
+
+    std::ostringstream texts;
+    sheet->PrintTexts(texts);
+    ASSERT_EQUAL(texts.str(), "=1/0\t\nmeow\t=1+2\n");
+
+    std::ostringstream values;
+    sheet->PrintValues(values);
+    ASSERT_EQUAL(values.str(), "#DIV/0!\t\nmeow\t3\n");
+
+    sheet->ClearCell("B2"_pos);
+    ASSERT_EQUAL(sheet->GetPrintableSize(), (Size{2, 1}));
+}
+
 } // namespace
 
 namespace
@@ -79,12 +182,6 @@ double ExecuteASTFormula(const std::string &expression)
     return ParseFormulaAST(expression).Execute();
 }
 } // namespace
-
-inline std::ostream &operator<<(std::ostream &output, const CellInterface::Value &value)
-{
-    std::visit([&](const auto &x) { output << x; }, value);
-    return output;
-}
 
 std::unique_ptr<CellInterface> CreateCell(const std::string &str)
 {
@@ -102,14 +199,6 @@ int main()
 
     ASSERT_EQUAL(ExecuteASTFormula("1"), 1.0);
     ASSERT_EQUAL(ExecuteASTFormula("1+2*3-4/5"), 6.2);
-    try
-    {
-        ExecuteASTFormula("1/0");
-    }
-    catch (const FormulaError &fe)
-    {
-        std::cout << fe.what() << std::endl;
-    }
 
     auto simple_text = CreateCell("simple_text");
     ASSERT_EQUAL(simple_text->GetText(), "simple_text");
@@ -147,8 +236,12 @@ int main()
     ASSERT_EQUAL(switch_text->GetText(), "=1/0");
     std::cout << std::get<FormulaError>(switch_text->GetValue()) << std::endl;
 
-    std::cout << "Tests Passed" << std::endl;
-    return 0;
+    RUN_TEST(tr, TestEmpty);
+    RUN_TEST(tr, TestInvalidPosition);
+    RUN_TEST(tr, TestSetCellPlainText);
+    RUN_TEST(tr, TestClearCell);
+    RUN_TEST(tr, TestPrint);
 
+    std::cout << "Tests Passed" << std::endl;
     return 0;
 }

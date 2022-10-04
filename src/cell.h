@@ -62,9 +62,14 @@ class Cell : public CellInterface
     void Set(std::string text) override;
     void Clear();
 
+    Cell &SetPosition(Position pos);
+    Cell &SetSheet(SheetInterface *sheet);
+
     Value GetValue() const override;
     std::string GetText() const override;
 
   private:
+    Position pos_{Position::NONE};
+    SheetInterface *sheet_{nullptr};
     std::unique_ptr<Impl> impl_{std::make_unique<EmptyImpl>()};
 };

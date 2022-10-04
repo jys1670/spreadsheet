@@ -35,6 +35,8 @@ target_link_libraries(spreadsheet ${ANLTR_LIBRARY})
          src/formula.h
          src/cell.cpp
          src/cell.h
+         src/sheet.cpp
+         src/sheet.h
          src/FormulaAST.cpp
          src/FormulaAST.h
          src/structures.cpp

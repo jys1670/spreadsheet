@@ -84,3 +84,15 @@ std::string Cell::GetText() const
 {
     return impl_->GetText();
 }
+
+Cell &Cell::SetPosition(Position pos)
+{
+    pos_ = pos;
+    return *this;
+}
+
+Cell &Cell::SetSheet(SheetInterface *sheet)
+{
+    sheet_ = sheet;
+    return *this;
+}

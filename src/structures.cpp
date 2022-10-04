@@ -25,6 +25,11 @@ bool Position::IsValid() const
     return row >= 0 && col >= 0 && row < MAX_ROWS && col < MAX_COLS;
 }
 
+bool Size::operator==(Size rhs) const
+{
+    return cols == rhs.cols && rows == rhs.rows;
+}
+
 std::string Position::ToString() const
 {
     if (!IsValid())
