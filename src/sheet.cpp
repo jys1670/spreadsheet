@@ -7,7 +7,7 @@
 
 using namespace std::literals;
 
-Sheet::Sheet() : table_{}, size_{0, 0}
+Sheet::Sheet() : table_{}, size_{0, 0}, graph_(*this)
 {
 }
 
@@ -19,7 +19,18 @@ void Sheet::SetCell(Position pos, std::string text)
     if (table_.count(pos) && table_.at(pos).GetText() == text)
         return;
 
-    table_[pos].SetPosition(pos).SetSheet(this).Set(text);
+    table_[pos].SetPosition(pos).SetSheet(this).SetGraph(&graph_).Set(text);
+    for (const auto &cell : table_[pos].GetReferencedCells())
+    {
+        if (!table_.count(cell))
+        {
+            table_[cell].Set(std::string{});
+            if (cell.row >= size_.rows)
+                size_.rows = cell.row + 1;
+            if (cell.col >= size_.cols)
+                size_.cols = cell.col + 1;
+        }
+    }
 
     if (pos.row >= size_.rows)
         size_.rows = pos.row + 1;

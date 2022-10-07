@@ -1,17 +1,19 @@
 #include "formula.h"
-
 #include "FormulaAST.h"
 
 #include <algorithm>
-#include <cassert>
-#include <cctype>
 #include <sstream>
 
 using namespace std::literals;
 
 std::ostream &operator<<(std::ostream &output, FormulaError fe)
 {
-    return output << "#DIV/0!";
+    return output << fe.ToString();
+}
+
+std::ostream &operator<<(std::ostream &output, FormulaError::Category fe_category)
+{
+    return output << FormulaError(fe_category);
 }
 
 namespace
@@ -19,10 +21,13 @@ namespace
 class Formula : public FormulaInterface
 {
   public:
-    // Реализуйте следующие методы:
     explicit Formula(std::string expression);
-    Value Evaluate() const override;
+
+    Value Evaluate(const SheetInterface &sheet) const override;
+
     std::string GetExpression() const override;
+
+    std::vector<Position> GetReferencedCells() const override;
 
   private:
     FormulaAST ast_;
@@ -32,11 +37,11 @@ Formula::Formula(std::string expression) : ast_(ParseFormulaAST(std::move(expres
 {
 }
 
-FormulaInterface::Value Formula::Evaluate() const
+FormulaInterface::Value Formula::Evaluate(const SheetInterface &sheet) const
 {
     try
     {
-        return ast_.Execute();
+        return ast_.Execute(sheet);
     }
     catch (const FormulaError &fe)
     {
@@ -44,8 +49,13 @@ FormulaInterface::Value Formula::Evaluate() const
     }
     catch (const std::exception &ex)
     {
-        return FormulaError("Err");
+        return FormulaError(FormulaError::Category::Value);
     }
+}
+
+std::vector<Position> Formula::GetReferencedCells() const
+{
+    return ast_.GetReferencedCells();
 }
 
 std::string Formula::GetExpression() const

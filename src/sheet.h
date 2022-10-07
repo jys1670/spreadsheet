@@ -4,6 +4,7 @@
 #include "common.h"
 
 #include <functional>
+#include <unordered_map>
 
 class Sheet : public SheetInterface
 {
@@ -11,11 +12,13 @@ class Sheet : public SheetInterface
 
   public:
     Sheet();
-    ~Sheet();
+
+    ~Sheet() override;
 
     void SetCell(Position pos, std::string text) override;
 
     const CellInterface *GetCell(Position pos) const override;
+
     CellInterface *GetCell(Position pos) override;
 
     void ClearCell(Position pos) override;
@@ -23,15 +26,15 @@ class Sheet : public SheetInterface
     Size GetPrintableSize() const override;
 
     void PrintValues(std::ostream &output) const override;
-    void PrintTexts(std::ostream &output) const override;
 
-    // Можете дополнить ваш класс нужными полями и методами
+    void PrintTexts(std::ostream &output) const override;
 
   private:
     Table table_;
     Size size_;
+    Graph graph_;
 
     static void CheckCorrectness(const Position &pos);
 };
 
-std::ostream &operator<<(std::ostream &output, const CellInterface::Value &value);
+std::ostream &operator<<(std::ostream &out, const CellInterface::Value &value);

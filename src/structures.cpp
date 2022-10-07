@@ -1,10 +1,10 @@
 #include "common.h"
+
 #include <algorithm>
 #include <cctype>
 #include <sstream>
-#include <tuple>
 
-const int LETTERS = 26; //* Total amount of symbols in our numeral system
+const int LETTERS = 26;
 const int MAX_POSITION_LENGTH = 17;
 const int MAX_POS_LETTER_COUNT = 3;
 
@@ -23,11 +23,6 @@ bool Position::operator<(const Position rhs) const
 bool Position::IsValid() const
 {
     return row >= 0 && col >= 0 && row < MAX_ROWS && col < MAX_COLS;
-}
-
-bool Size::operator==(Size rhs) const
-{
-    return cols == rhs.cols && rows == rhs.rows;
 }
 
 std::string Position::ToString() const
@@ -72,4 +67,59 @@ Position Position::FromString(std::string_view str)
     }
 
     return {row - 1, col - 1};
+}
+
+Size::Size() = default;
+
+Size::Size(int rows, int cols) : rows(rows), cols(cols)
+{
+}
+
+bool Size::operator==(Size rhs) const
+{
+    return cols == rhs.cols && rows == rhs.rows;
+}
+
+Size &Size::operator=(Size rhs)
+{
+    rows = rhs.rows;
+    cols = rhs.cols;
+    return *this;
+}
+
+Size::Size(const Size &other)
+{
+    rows = other.rows;
+    cols = other.cols;
+}
+
+FormulaError::FormulaError(Category category) : category_(category)
+{
+}
+
+FormulaError::Category FormulaError::GetCategory() const
+{
+    return category_;
+}
+
+bool FormulaError::operator==(FormulaError rhs) const
+{
+    return category_ == rhs.category_;
+}
+
+std::string_view FormulaError::ToString() const
+{
+    if (category_ == Category::Ref)
+    {
+        return "#REF!";
+    }
+    if (category_ == Category::Value)
+    {
+        return "#VALUE!";
+    }
+    if (category_ == Category::Div0)
+    {
+        return "#DIV/0!";
+    }
+    throw std::runtime_error("unknown_error");
 }

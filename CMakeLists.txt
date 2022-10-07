@@ -15,11 +15,20 @@ add_definitions(
         -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 )
 antlr_target(FormulaParser antlr/Formula.g4 LEXER PARSER LISTENER)
-
 file(GLOB ANTLR_OUTPUT
         antlr/Formula/*.cpp
         antlr/Formula/*.h
         )
+
+# Doxygen 
+find_package(Doxygen)
+if (DOXYGEN_FOUND)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile
+            ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+    add_custom_target(doxygen
+            ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs)
+endif ()
 
 add_executable(
         spreadsheet
@@ -30,15 +39,15 @@ target_link_libraries(spreadsheet ${ANLTR_LIBRARY})
  add_executable(
          unit-tests
          ${ANTLR_OUTPUT}
+         src/cell.cpp
+         src/cell.h
          src/common.h
          src/formula.cpp
          src/formula.h
-         src/cell.cpp
-         src/cell.h
-         src/sheet.cpp
-         src/sheet.h
          src/FormulaAST.cpp
          src/FormulaAST.h
+         src/sheet.cpp
+         src/sheet.h
          src/structures.cpp
          tests/main.cpp
          tests/test_runner_p.h

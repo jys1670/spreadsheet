@@ -1,55 +1,27 @@
-/**
- * @file common.h
- * @brief widely used auxiliary structures
- */
 #pragma once
 
+#include <iosfwd>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
-/**
- * @brief cell position, index starts from zero
- *
- */
+// Позиция ячейки. Индексация с нуля.
 struct Position
 {
     int row = 0;
     int col = 0;
 
     bool operator==(Position rhs) const;
+
     bool operator<(Position rhs) const;
 
-    /**
-     * @brief checks if position has valid index
-     *
-     */
     bool IsValid() const;
 
-    /**
-     * @brief converts Position to string, opposite of FromString(std::string_view str)
-     *
-     */
     std::string ToString() const;
 
-    /**
-     * @brief converts text into Position
-     *
-     * (0,0) -> A1, (0,1) -> B1, (1,1) -> A2, etc
-     * index: 0 1 2 3 4 ...
-     * nums:  1 2 3 4 5 ...
-     * cols:  A B C D E ...
-     * Algo example:
-     * 800 = 1 * 26^2 + 4 * 26^1 + 20 * 26^0            numerical
-     * 800 = (1-1) * 26^2 + (4-1) * 26^1 + 20 * 26^0    index
-     * 800 = ADU                                        column
-     *
-     * @param str std:string in format like "A1", "ADU123", etc
-     * @return Position
-     */
     static Position FromString(std::string_view str);
 
     static const int MAX_ROWS = 16384;
@@ -70,17 +42,52 @@ struct Size
     int rows = 0;
     int cols = 0;
 
+    Size();
+
+    Size(int rows, int cols);
+
     bool operator==(Size rhs) const;
+
+    Size &operator=(Size rhs);
+
+    Size(const Size &other);
 };
 
 // Описывает ошибки, которые могут возникнуть при вычислении формулы.
-class FormulaError : public std::runtime_error
+class FormulaError
 {
   public:
-    using std::runtime_error::runtime_error;
+    enum class Category
+    {
+        Ref,   // ссылка на ячейку с некорректной позицией
+        Value, // ячейка не может быть трактована как число
+        Div0,  // в результате вычисления возникло деление на ноль
+    };
+
+    // explicit FormulaError(std::string text);
+
+    FormulaError(Category category);
+
+    Category GetCategory() const;
+
+    bool operator==(FormulaError rhs) const;
+
+    std::string_view ToString() const;
+
+  private:
+    Category category_;
 };
 
 std::ostream &operator<<(std::ostream &output, FormulaError fe);
+
+std::ostream &operator<<(std::ostream &output, FormulaError::Category fe);
+
+// Исключение, выбрасываемое при попытке передать в метод некорректную позицию
+class InvalidPositionException : public std::out_of_range
+{
+  public:
+    using std::out_of_range::out_of_range;
+};
 
 // Исключение, выбрасываемое при попытке задать синтаксически некорректную
 // формулу
@@ -90,11 +97,12 @@ class FormulaException : public std::runtime_error
     using std::runtime_error::runtime_error;
 };
 
-// Исключение, выбрасываемое при попытке передать в метод некорректную позицию
-class InvalidPositionException : public std::out_of_range
+// Исключение, выбрасываемое при попытке задать формулу, которая приводит к
+// циклической зависимости между ячейками
+class CircularDependencyException : public std::runtime_error
 {
   public:
-    using std::out_of_range::out_of_range;
+    using std::runtime_error::runtime_error;
 };
 
 // Исключение, выбрасываемое, если вставка строк/столбцов в таблицу приведёт к
@@ -130,10 +138,16 @@ class CellInterface
     // В случае текстовой ячейки это её текст (без экранирующих символов). В
     // случае формулы - числовое значение формулы или сообщение об ошибке.
     virtual Value GetValue() const = 0;
+
     // Возвращает внутренний текст ячейки, как если бы мы начали её
     // редактирование. В случае текстовой ячейки это её текст (возможно,
     // содержащий экранирующие символы). В случае формулы - её выражение.
     virtual std::string GetText() const = 0;
+
+    // Возвращает список ячеек, которые непосредственно задействованы в данной
+    // формуле. Список отсортирован по возрастанию и не содержит повторяющихся
+    // ячеек. В случае текстовой ячейки список пуст.
+    virtual std::vector<Position> GetReferencedCells() const = 0;
 };
 
 // Интерфейс таблицы
@@ -151,6 +165,7 @@ class SheetInterface
     // Возвращает значение ячейки.
     // Если ячейка пуста, может вернуть nullptr.
     virtual const CellInterface *GetCell(Position pos) const = 0;
+
     virtual CellInterface *GetCell(Position pos) = 0;
 
     // Очищает ячейку.
@@ -168,6 +183,7 @@ class SheetInterface
     // преобразования ячеек в строку используются методы GetValue() или GetText()
     // соответственно. Пустая ячейка представляется пустой строкой в любом случае.
     virtual void PrintValues(std::ostream &output) const = 0;
+
     virtual void PrintTexts(std::ostream &output) const = 0;
 };
 
